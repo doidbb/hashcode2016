@@ -4,7 +4,7 @@ import sys
 
 class drone():
     #dronePos in form "x,y"
-    def __init__(self, dronePos, droneLoad, droneUse):
+    def __init__(self, dronePos):
         self.dronePos = dronePos
         self.droneLoad = []
         self.droneUse = False
@@ -15,9 +15,39 @@ class drone():
         self.droneLoad.append(newItem)
         self.droneUse = True
         return str(droneNo) + "L" + str(warehouseNo) + str(newItem) + "1"
-        
+    def deliver(newPos, itemDelivered, droneNo, warehouseNo):
+        self.dronePos = newPos
+        self.droneLoad.remove(itemDelivered)
+        self.droneUse = False
+        return str(droneNo) + "D" +  str(warehouseNo) + str(itemDelivered) + "1"
+    def moveDrone(newPos):
+        self.dronePos = newPos
+    def wait(droneNo, turns):
+        return str(droneNo) + "W" + str(turns)
 
-def parse():
+class warehouse():
+    def __init__(self,warehouseCoord):
+        self.warehouseCoord = warehouseCoord
+        self.warehouseLoad = []
+        self.warehouseQty = []
+    #the add* subroutines should be used ONLY when initialising the warehouse
+    def addToLoad(item):
+        warehouseLoad.append(item)
+    def addQty(amount):
+        warehouseQty.append(amount)
+    def changeQty(index,amount):
+        warehouseQty[index] = warehouseQty[index] + amount
+
+class order():
+    def __init__(self,orderCoord):
+        orderCoord = orderCoord
+        orderProds = []
+    def addToOrder(item):
+        orderProds.append(item)
+    def itemDelivered(item):
+        orderProds.remove(item)
+
+def parseFile():
     hashFile = sys.argv[1]
     hashFile = open(hashFile, 'r+')
     hashLines = hashFile.read().split("\n")
@@ -50,6 +80,19 @@ def parse():
         orderLoc.append(hashLines[i])
         orderQty.append(hashLines[i+1])
         orderItems.append(hashLines[i+2])
+#code for creating drone classes goes here
+def initDrones():
+    pass
+#code for creating warehouses goes here
+def initWarehouses():
+    pass
+#code for creating order classes goes here
+def initOrders():
+    pass
+#code for making deliveries goes here
+def droneDelivery():
+    pass
+    #should make sure that when picking up, the item exists in an order
 
 def drone():
     #0 is location
@@ -139,10 +182,10 @@ def shortestDistance(loc1,loc2):
     loc2 = str(loc2).split()
     xSq = (eval(loc1[0]) - eval(loc2[0])) ** 2
     ySq = (eval(loc1[1]) - eval(loc2[1])) ** 2
-    pythag = (xSq + ySq) ** 0.5
-    return pythag
+    distance = (xSq + ySq) ** 0.5
+    return distance
 
 def main():
-    parse()
+    parseFile()
 
 main()
