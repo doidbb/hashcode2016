@@ -2,6 +2,21 @@
 
 import sys
 
+class drone():
+    #dronePos in form "x,y"
+    def __init__(self, dronePos, droneLoad, droneUse):
+        self.dronePos = dronePos
+        self.droneLoad = []
+        self.droneUse = False
+    #newpos in form "x,y"
+    #newload should be a list
+    def loadDrone(newPos, newItem, droneNo, warehouseNo):
+        self.dronePos = newPos
+        self.droneLoad.append(newItem)
+        self.droneUse = True
+        return str(droneNo) + "L" + str(warehouseNo) + str(newItem) + "1"
+        
+
 def parse():
     hashFile = sys.argv[1]
     hashFile = open(hashFile, 'r+')
@@ -36,7 +51,7 @@ def parse():
         orderQty.append(hashLines[i+1])
         orderItems.append(hashLines[i+2])
 
-
+def drone():
     #0 is location
     #1 is items
     #2 weight
