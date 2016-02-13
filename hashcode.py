@@ -4,8 +4,9 @@ import sys
 
 class drone():
     #dronePos in form "x,y"
-    def __init__(self, dronePos):
+    def __init__(self, dronePos, maxLoad):
         self.dronePos = dronePos
+        self.madLoad = maxLoad
         self.droneLoad = []
         self.droneUse = False
     #newpos in form "x,y"
@@ -30,9 +31,7 @@ class warehouse():
         self.warehouseCoord = warehouseCoord
         self.warehouseLoad = []
         self.warehouseQty = []
-    #the add* subroutines should be used ONLY when initialising the warehouse
-    def addToLoad(item):
-        warehouseLoad.append(item)
+    #the add* subroutine should be used ONLY when initialising the warehouse
     def addQty(amount):
         warehouseQty.append(amount)
     def changeQty(index,amount):
@@ -51,6 +50,8 @@ def parseFile():
     hashFile = sys.argv[1]
     hashFile = open(hashFile, 'r+')
     hashLines = hashFile.read().split("\n")
+    return hashLines
+def nulll():
     hashInfo = hashLines[0].split()
     numRows = int(hashInfo[0])
     numColumns = int(hashInfo[1])
@@ -80,103 +81,37 @@ def parseFile():
         orderLoc.append(hashLines[i])
         orderQty.append(hashLines[i+1])
         orderItems.append(hashLines[i+2])
-#code for creating drone classes goes here
-def initDrones():
-    pass
+
+def init(lines):
+    numWarehouses = int(lines[3])
+    whInfoBegin = 4
+    whInfoEnd = numWarehouses * 2
+    whInfo = lines[whInfoBegin:whInfoEnd]
+    warehouses = initWarehouse(whInfo,int(lines[1]))
+
 #code for creating warehouses goes here
-def initWarehouses():
+def initWarehouses(lines, prodTypes):
+    warehouses = []
+    #create the warehouse with an empty product list
+    for i in range(0, len(lines), 2):
+        wh = warehouse(lines[i])
+        for item in lines[i+1].split():
+            wh.addQty(item)
+        warehouses.append(wh)
+    return warehouses
+
+def initDrones(lines):
     pass
+
 #code for creating order classes goes here
-def initOrders():
+def initOrders(lines, numOrders):
     pass
+
 #code for making deliveries goes here
 def droneDelivery():
     pass
     #should make sure that when picking up, the item exists in an order
 
-def drone():
-    #0 is location
-    #1 is items
-    #2 weight
-    droneAttrs = ([],[],[])
-    #0 means unused, 1 means in use
-    droneIndex = 0
-    dronesUnused = []
-    ordersMade = 0
-    for i in range(dronesAvail):
-        dronesUnused.append(0)
-        droneAttrs[0].append("0 0")
-        droneAttrs[1].append([])
-        droneAttrs[2].append(0)
-    while (ordersMade != numOrders):
-        droneNum = 0
-        for drone in droneAttrs[0]:
-            if drone == "0 0":
-            #we get the drone index
-                for i in range(len(dronesUnused)):
-                    if drone == 0:
-                        droneIndex = i
-                        if droneAttrs[0][i] == 0:
-                            #we assume it's in it's the default depo
-                            droneAttrs[0][i] = warehouseLoc[0]
-                #we get the index of the warehouse
-                warehouseIndex = 0
-                for i in range(len(warehouseLoc)):
-                    if warehouseLoc[i] == droneAttrs[1][droneIndex]:
-                        warehouseIndex = i
-                droneItems = []
-                droneMass = 0
-                full = False
-                while (not full):
-                    for i in range(len(warehouseIndex)):
-                        print(i)
-                        itemWeight = productWeights[i]
-                        if warehouseQty[warehouseIndex][i] != 0:
-                            ordered = False
-                            for item in productTypes:
-                                print(item)
-                                for orderItem in orderItems:
-                                    print(orderItem)
-                                    if item in orderItem.split():
-                                        ordered = True
-                                        droneAttrs[1][droneIndex].append(item)
-                                        fileForWriting.write(str(droneIndex) + " L " + str(i) + item + " 1 ")
-                            if (eval(itemWeight) < droneMass) and ordered:
-                                droneAttrs[2][droneIndex] += itemWeight
-                                droneItems.append(productTypes[i])
-                                #decrease qty
-                                warehouseQty[warehouseIndex][i] = warehouseQty - 1
-                            else:
-                                full = True
-                droneAttrs[1][droneIndex] = droneItems
-            oldDist = 9999999999
-            for j in range(len(orderLoc)):
-
-                nextDist = shortestDistance(orderLoc[j],droneAttrs[0][droneIndex])
-                #once the next closest thing is found, we need to see if that place has items that the drone holds
-                thisItems = orderItems[j]
-                hasItems = False
-                for item in droneAttrs[1]:
-                    if item in orderItems[j].split():
-                        hasItems = True
-                if nextDist < oldDist or hasItems:
-                    oldDist = nextDist
-                    orderIndex = j
-            #make delivery
-            droneAttrs[0][droneIndex] = orderLoc[orderIndex]
-            for item in droneAttrs[1][droneIndex]:
-                if item in orderItems[j].split():
-                    droneAttrs[1][droneIndex].remove(item)
-            ordersMade += 1
-            #go to next warehouse
-            oldWareDist = 999999999
-            for a in range(len(warehouseLoc)):
-                newnextDist = shortestDistance(warehouseLoc[a],droneAttrs[0][droneIndex])
-                if newnextDist < oldWareDist:
-                    oldWareDist = newnextDist
-                    newloc = a
-            droneAttrs[0][droneIndex] = warehouseLoc[a]
-            #the while loop should repeat
 def shortestDistance(loc1,loc2):
     loc1 = str(loc1).split()
     loc2 = str(loc2).split()
@@ -186,6 +121,6 @@ def shortestDistance(loc1,loc2):
     return distance
 
 def main():
-    parseFile()
-
+    lines = parseFile()
+    init(lines)
 main()
