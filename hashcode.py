@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/env python
 
 import sys
 
@@ -11,43 +11,50 @@ class drone():
         self.droneUse = False
     #newpos in form "x,y"
     #newload should be a list
-    def loadDrone(newPos, newItem, droneNo, warehouseNo):
+    def loadDrone(self,newPos, newItem, droneNo, warehouseNo):
         self.dronePos = newPos
         self.droneLoad.append(newItem)
         self.droneUse = True
         return str(droneNo) + "L" + str(warehouseNo) + str(newItem) + "1"
-    def deliver(newPos, itemDelivered, droneNo, warehouseNo):
+    def deliver(self,newPos, itemDelivered, droneNo, warehouseNo):
         self.dronePos = newPos
         self.droneLoad.remove(itemDelivered)
         self.droneUse = False
         return str(droneNo) + "D" +  str(warehouseNo) + str(itemDelivered) + "1"
-    def moveDrone(newPos):
+    def moveDrone(self,newPos):
         self.dronePos = newPos
-    def wait(droneNo, turns):
+    def wait(self,droneNo, turns):
         return str(droneNo) + "W" + str(turns)
 
 class warehouse():
     def __init__(self,warehouseCoord):
         self.warehouseCoord = warehouseCoord
-        self.warehouseLoad = []
         self.warehouseQty = []
     #the add* subroutine should be used ONLY when initialising the warehouse
-    def addQty(amount):
-        warehouseQty.append(amount)
-    def changeQty(index,amount):
-        warehouseQty[index] = warehouseQty[index] + amount
+    def addQty(self,amount):
+        self.warehouseQty.append(amount)
+    def changeQty(self,index,amount):
+        self.warehouseQty[index] = warehouseQty[index] + amount
+    def showQty(self):
+        return self.warehouseQty
+    def showLoc(self):
+        return self.warehouseCoord
 
 class order():
     def __init__(self,orderCoord):
-        orderCoord = orderCoord
-        orderProds = []
-    def addToOrder(item):
-        orderProds.append(item)
-    def itemDelivered(item):
-        orderProds.remove(item)
+        self.orderCoord = orderCoord
+        self.orderProds = []
+    def addToOrder(self,item):
+        self.orderProds.append(item)
+    def itemDelivered(self,item):
+        self.orderProds.remove(item)
+    def showItems(self):
+        return self.orderProds
+    def showCoord(self):
+        return self.orderCoord
 
 def parseFile():
-    hashFile = sys.argv[1]
+    hashFile = "busy_day.in"#sys.argv[1]
     hashFile = open(hashFile, 'r+')
     hashLines = hashFile.read().split("\n")
     return hashLines
@@ -82,12 +89,20 @@ def nulll():
         orderQty.append(hashLines[i+1])
         orderItems.append(hashLines[i+2])
 
-def init(lines):
+def initObjs(lines):
     numWarehouses = int(lines[3])
     whInfoBegin = 4
-    whInfoEnd = numWarehouses * 2
+    whInfoEnd = (numWarehouses * 2) + 4
     whInfo = lines[whInfoBegin:whInfoEnd]
-    warehouses = initWarehouse(whInfo,int(lines[1]))
+    warehouses = initWarehouses(whInfo,int(lines[1]))
+    firstWh = whInfo[0]
+    numDrones = eval(lines[0].split()[2])
+    maxLoad = eval(lines[0].split()[4])
+    drones = initDrones(numDrones, maxLoad, firstWh)
+    orderBegin = whInfoEnd + 1
+    orderEnd = len(lines) - 1
+    orderList = lines[orderBegin:orderEnd]
+    orders = initOrders(orderList,orderEnd)
 
 #code for creating warehouses goes here
 def initWarehouses(lines, prodTypes):
@@ -100,12 +115,22 @@ def initWarehouses(lines, prodTypes):
         warehouses.append(wh)
     return warehouses
 
-def initDrones(lines):
-    pass
+def initDrones(numDronesp, maxLoadp, whCoordp):
+    drones = []
+    for dr in range(numDronesp):
+        newDrone = drone(whCoordp,maxLoadp)
+        drones.append(newDrone)
+    return drones
 
 #code for creating order classes goes here
 def initOrders(lines, numOrders):
-    pass
+    orders = []
+    for i in range(0, len(lines), 3):
+        ord = order(lines[i])
+        for item in lines[i+2].split():
+            ord.addToOrder(item)
+        orders.append(ord)
+    return orders
 
 #code for making deliveries goes here
 def droneDelivery():
@@ -122,5 +147,5 @@ def shortestDistance(loc1,loc2):
 
 def main():
     lines = parseFile()
-    init(lines)
+    initObjs(lines)
 main()
