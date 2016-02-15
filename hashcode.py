@@ -6,9 +6,9 @@ class drone():
     #dronePos in form "x,y"
     def __init__(self, dronePos, maxLoad):
         self.dronePos = dronePos
-        self.madLoad = maxLoad
+        self.maxLoad = maxLoad
         self.droneLoad = []
-        self.droneUse = False
+        self.inUse = False
     #newpos in form "x,y"
     #newload should be a list
     def loadDrone(self,newPos, newItem, droneNo, warehouseNo):
@@ -25,6 +25,8 @@ class drone():
         self.dronePos = newPos
     def wait(self,droneNo, turns):
         return str(droneNo) + "W" + str(turns)
+    def getPos(self):
+        return self.dronePos
 
 class warehouse():
     def __init__(self,warehouseCoord):
@@ -91,6 +93,9 @@ def nulll():
 
 def initObjs(lines):
     numWarehouses = int(lines[3])
+    prodWeights = map(int,lines[2].split())
+    print(prodWeights)
+    print(type(prodWeights))
     whInfoBegin = 4
     whInfoEnd = (numWarehouses * 2) + 4
     whInfo = lines[whInfoBegin:whInfoEnd]
@@ -103,6 +108,9 @@ def initObjs(lines):
     orderEnd = len(lines) - 1
     orderList = lines[orderBegin:orderEnd]
     orders = initOrders(orderList,orderEnd)
+    numOrders = lines[whInfoEnd]
+    print(numOrders)
+    droneDelivery(drones,orders,warehouses,numOrders)
 
 #code for creating warehouses goes here
 def initWarehouses(lines, prodTypes):
@@ -133,9 +141,51 @@ def initOrders(lines, numOrders):
     return orders
 
 #code for making deliveries goes here
-def droneDelivery():
-    pass
-    #should make sure that when picking up, the item exists in an order
+def droneDelivery(dronesp,ordersp,warehousesp,maxOrdersp, numWarehousesp):
+    numOrders = 0
+    while (numOrders != maxOrdersp):
+        for dr in dronesp:
+            if not dr.inUse:
+                maxdist = 999999999
+                #select the next order
+                for ord in ordersp:
+                    newDist = shortestDistance(ord.showCoord(),dr.getPos()) 
+                    if newDist < maxdist:
+                        maxdist = newDist
+                        thisOrd = ord
+            delItems = thisOrd.showItems()
+            #find the order
+            for wh in warehousesp:
+                if dr.getPos() == wh.showLoc():
+                    thisWarehouse = wh
+            #does the order contain all that's needed to fulfill the order?
+            #while the warehouse doesn't have items, we'll find a new warehouse
+            warehousesChecked = 0
+            while (not hasItems(thisOrd,thisWarehouse)) or (numWarehousesp == warehousesChecked):
+                maxdist = 99999999
+                wh = thisWarehouse
+                newdist = shortestDistance(dr.getPos(),wh.showLoc())
+                for wh in warehousesp:
+                    if newdist < maxdist:
+                        maxdist = newdist
+                        thisWarehouse = wh
+                    warehousesChecked += 1
+            if numWarehousesp == warehousesChecked:
+                pass
+                #we start picking up what we can
+            #else we should be able to deliver!
+            numOrders += 1
+
+
+
+def hasItems(orderp,whp):
+    for item in orderp.showItems():
+        if item not in whp.showQty():
+            #terminates the function early and returns false
+            return False
+    #else it will return true
+    return True
+
 
 def shortestDistance(loc1,loc2):
     loc1 = str(loc1).split()
