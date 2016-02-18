@@ -4,15 +4,17 @@ import sys
 
 class drone():
     #dronePos in form "x,y"
-    def __init__(self, dronePos, maxLoad):
+    def __init__(self, dronePos,maxLoad,orderAllocated,droneID):
         self.dronePos = dronePos
         self.maxLoad = maxLoad
         self.droneLoad = []
+        self.droneQty = []
         self.inUse = False
+        self.orderAllocated = orderAllocated
+        self.droneID = droneID
     #newpos in form "x,y"
     #newload should be a list
     def loadDrone(self,newPos, newItem, droneNo, warehouseNo):
-        self.dronePos = newPos
         self.droneLoad.append(newItem)
         self.droneUse = True
         return str(droneNo) + "L" + str(warehouseNo) + str(newItem) + "1"
@@ -25,12 +27,11 @@ class drone():
         self.dronePos = newPos
     def wait(self,droneNo, turns):
         return str(droneNo) + "W" + str(turns)
-    def getPos(self):
-        return self.dronePos
 
 class warehouse():
-    def __init__(self,warehouseCoord):
+    def __init__(self,warehouseCoord,warehouseID):
         self.warehouseCoord = warehouseCoord
+        self.warehouseID = warehouseID
         self.warehouseQty = []
     #the add* subroutine should be used ONLY when initialising the warehouse
     def addQty(self,amount):
@@ -43,9 +44,10 @@ class warehouse():
         return self.warehouseCoord
 
 class order():
-    def __init__(self,orderCoord):
+    def __init__(self,orderCoord,orderID):
         self.orderCoord = orderCoord
         self.orderProds = []
+        self.orderID = orderID
     def addToOrder(self,item):
         self.orderProds.append(item)
     def itemDelivered(self,item):
@@ -56,41 +58,46 @@ class order():
         return self.orderCoord
 
 def parseFile():
+    global hashFile
     hashFile = "busy_day.in"#sys.argv[1]
     hashFile = open(hashFile, 'r+')
     hashLines = hashFile.read().split("\n")
     return hashLines
-def nulll():
-    hashInfo = hashLines[0].split()
-    numRows = int(hashInfo[0])
-    numColumns = int(hashInfo[1])
-    dronesAvail = int(hashInfo[2])
-    deadline = int(hashInfo[3])
-    maxLoad = int(hashInfo[4])
-    productTypes = hashLines[1].split()[0]
-    productWeights = hashLines[2].split()
-    numWarehouses = int(hashLines[3])
-    warehouseLoc = []
-    warehouseQty = []
 
-    for i in range(5, (numWarehouses *2) + 4,2 ):
-        warehouseLoc.append(hashLines[i])
-        warehouseQty.append(hashLines[i+1].split())
-    for item in warehouseQty:
-        for otheritem in item:
-            otheritem = eval(otheritem)
+def initWarehouses(lines, prodTypes):
+    warehouses = []
+    #create the warehouse with an empty product list
+    for i in range(0, len(lines), 2):
+        wh = warehouse(lines[i],i//2,)
+        for item in lines[i+1].split():
+            wh.addQty(eval(item))
+        warehouses.append(wh)
+    return warehouses
 
-    numOrders = eval(hashLines[4+(numWarehouses * 2)])
+def initDrones(numDronesp, maxLoadp, whCoordp,orders):
+    drones = []
+    ordIndex = 0
+    for dr in range(numDronesp):
+        if ordIndex < len(orders):
+            newDrone = drone(whCoordp,maxLoadp,orders[ordIndex],ordIndex)
+            orders.remove(orders[ordIndex])
+        else:
+            newDrone = drone(whCoordp,maxLoadp,"none",ordIndex)
+        ordIndex += 1
+        drones.append(newDrone)
+        
+    return drones,orders
 
-    orderLoc = []
-    orderQty = []
-    orderItems = []
-    fileForWriting = open("commands", "w+")
-    for i in range(5+(numWarehouses * 2),(numOrders * 3) + (5 + (numWarehouses * 2)),3):
-        orderLoc.append(hashLines[i])
-        orderQty.append(hashLines[i+1])
-        orderItems.append(hashLines[i+2])
-
+#code for creating order classes goes here
+def initOrders(lines, numOrders):
+    orders = []
+    for i in range(0, len(lines), 3):
+        ord = order(lines[i],i//3)
+        for item in lines[i+2].split():
+            ord.addToOrder(eval(item))
+        orders.append(ord)
+    return orders
+            
 def initObjs(lines):
     numWarehouses = int(lines[3])
     prodWeights = map(int,lines[2].split())
@@ -101,82 +108,46 @@ def initObjs(lines):
     whInfo = lines[whInfoBegin:whInfoEnd]
     warehouses = initWarehouses(whInfo,int(lines[1]))
     firstWh = whInfo[0]
-    numDrones = eval(lines[0].split()[2])
-    maxLoad = eval(lines[0].split()[4])
-    drones = initDrones(numDrones, maxLoad, firstWh)
     orderBegin = whInfoEnd + 1
     orderEnd = len(lines) - 1
     orderList = lines[orderBegin:orderEnd]
     orders = initOrders(orderList,orderEnd)
     numOrders = lines[whInfoEnd]
+    numDrones = eval(lines[0].split()[2])
+    maxLoad = eval(lines[0].split()[4])
+    drones, orders = initDrones(numDrones, maxLoad, firstWh, orders)
     print(numOrders)
-    droneDelivery(drones,orders,warehouses,numOrders)
+    ordersMade = 0
+    while numOrders != ordersMade:
+        ordersMade = deliver(drones,orders,warehouses,prodWeights,ordersMade)
+        
 
-#code for creating warehouses goes here
-def initWarehouses(lines, prodTypes):
-    warehouses = []
-    #create the warehouse with an empty product list
-    for i in range(0, len(lines), 2):
-        wh = warehouse(lines[i])
-        for item in lines[i+1].split():
-            wh.addQty(item)
-        warehouses.append(wh)
-    return warehouses
+def deliver(dronesp,ordersp,warehousesp,prodWeightsp,ordersMade):
+    for dr in dronesp:
+        ordersMade = droneFill(dr,warehousesp,prodWeightsp,ordersMade)
+    return ordersMade
 
-def initDrones(numDronesp, maxLoadp, whCoordp):
-    drones = []
-    for dr in range(numDronesp):
-        newDrone = drone(whCoordp,maxLoadp)
-        drones.append(newDrone)
-    return drones
+def droneFill(dronep,whsp,weightsp,oms):
+    #create a list of closest warehouses to the order
+    distances = ([],[])
+    for wh in whsp:
+        distances[0].append(shortestDistance(wh.warehouseCoord,dronep.orderAllocated.orderCoord))
+        distances[1].append(wh.warehouseID)
+    print(distances[0])
+    print(distances[1])
+    for i in range(1,len(distances[0])):
+        j = i
+        while j > 0 and distances[0][j] < distances[0][j-1]:
+            distances[0][j], distances[0][j-1] = distances[0][j-1], distances[0][j]
+            distances[1][j], distances[1][j-1] = distances[1][j-1], distances[1][j]
+            j -= 1
+    #sort that list
+    print("ayy")
+    #start filling
 
-#code for creating order classes goes here
-def initOrders(lines, numOrders):
-    orders = []
-    for i in range(0, len(lines), 3):
-        ord = order(lines[i])
-        for item in lines[i+2].split():
-            ord.addToOrder(item)
-        orders.append(ord)
-    return orders
-
-#code for making deliveries goes here
-def droneDelivery(dronesp,ordersp,warehousesp,maxOrdersp, numWarehousesp):
-    numOrders = 0
-    while (numOrders != maxOrdersp):
-        for dr in dronesp:
-            if not dr.inUse:
-                maxdist = 999999999
-                #select the next order
-                for ord in ordersp:
-                    newDist = shortestDistance(ord.showCoord(),dr.getPos()) 
-                    if newDist < maxdist:
-                        maxdist = newDist
-                        thisOrd = ord
-            delItems = thisOrd.showItems()
-            #find the order
-            for wh in warehousesp:
-                if dr.getPos() == wh.showLoc():
-                    thisWarehouse = wh
-            #does the order contain all that's needed to fulfill the order?
-            #while the warehouse doesn't have items, we'll find a new warehouse
-            warehousesChecked = 0
-            while (not hasItems(thisOrd,thisWarehouse)) or (numWarehousesp == warehousesChecked):
-                maxdist = 99999999
-                wh = thisWarehouse
-                newdist = shortestDistance(dr.getPos(),wh.showLoc())
-                for wh in warehousesp:
-                    if newdist < maxdist:
-                        maxdist = newdist
-                        thisWarehouse = wh
-                    warehousesChecked += 1
-            if numWarehousesp == warehousesChecked:
-                pass
-                #we start picking up what we can
-            #else we should be able to deliver!
-            numOrders += 1
-
-
+    #start delivering
+    #add one to the orders made
+    return oms
 
 def hasItems(orderp,whp):
     for item in orderp.showItems():
@@ -185,7 +156,6 @@ def hasItems(orderp,whp):
             return False
     #else it will return true
     return True
-
 
 def shortestDistance(loc1,loc2):
     loc1 = str(loc1).split()
