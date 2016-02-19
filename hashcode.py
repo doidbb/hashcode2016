@@ -4,25 +4,22 @@ import sys
 
 class drone():
     #dronePos in form "x,y"
-    def __init__(self, dronePos,maxLoad,orderAllocated,droneID):
+    def __init__(self, dronePos,maxLoad,orderAllocated,droneID, hasOrder):
         self.dronePos = dronePos
         self.maxLoad = maxLoad
         self.droneLoad = []
-        self.droneQty = []
         self.inUse = False
         self.orderAllocated = orderAllocated
+        self.hasOrder = hasOrder
         self.droneID = droneID
     #newpos in form "x,y"
     #newload should be a list
-    def loadDrone(self,newPos, newItem, droneNo, warehouseNo):
+    def loadDrone(self, newItem, warehouseNo):
         self.droneLoad.append(newItem)
-        self.droneUse = True
-        return str(droneNo) + "L" + str(warehouseNo) + str(newItem) + "1"
-    def deliver(self,newPos, itemDelivered, droneNo, warehouseNo):
-        self.dronePos = newPos
+        return str(self.droneID) + " L " + str(warehouseNo) + " " + str(newItem) + " 1"
+    def deliver(self, itemDelivered):
         self.droneLoad.remove(itemDelivered)
-        self.droneUse = False
-        return str(droneNo) + "D" +  str(warehouseNo) + str(itemDelivered) + "1"
+        return str(self.droneID) + " D " +  str(self.orderAllocated.orderID) + " " + str(itemDelivered) + " 1"
     def moveDrone(self,newPos):
         self.dronePos = newPos
     def wait(self,droneNo, turns):
@@ -58,9 +55,9 @@ class order():
         return self.orderCoord
 
 def parseFile():
-    global hashFile
-    hashFile = "busy_day.in"#sys.argv[1]
-    hashFile = open(hashFile, 'r+')
+    global hashFilename
+    hashFilename = "redundancy.in"#sys.argv[1]
+    hashFile = open(hashFilename, 'r+')
     hashLines = hashFile.read().split("\n")
     return hashLines
 
@@ -79,10 +76,10 @@ def initDrones(numDronesp, maxLoadp, whCoordp,orders):
     ordIndex = 0
     for dr in range(numDronesp):
         if ordIndex < len(orders):
-            newDrone = drone(whCoordp,maxLoadp,orders[ordIndex],ordIndex)
+            newDrone = drone(whCoordp,maxLoadp,orders[ordIndex],ordIndex, True)
             orders.remove(orders[ordIndex])
         else:
-            newDrone = drone(whCoordp,maxLoadp,"none",ordIndex)
+            newDrone = drone(whCoordp,maxLoadp,"none",ordIndex, False)
         ordIndex += 1
         drones.append(newDrone)
         
@@ -99,10 +96,10 @@ def initOrders(lines, numOrders):
     return orders
             
 def initObjs(lines):
+    outfile = hashFilename[:-3]
+    commands = open(outfile,"w+")
     numWarehouses = int(lines[3])
-    prodWeights = map(int,lines[2].split())
-    print(prodWeights)
-    print(type(prodWeights))
+    prodWeights = list(map(int,lines[2].split()))
     whInfoBegin = 4
     whInfoEnd = (numWarehouses * 2) + 4
     whInfo = lines[whInfoBegin:whInfoEnd]
@@ -116,38 +113,49 @@ def initObjs(lines):
     numDrones = eval(lines[0].split()[2])
     maxLoad = eval(lines[0].split()[4])
     drones, orders = initDrones(numDrones, maxLoad, firstWh, orders)
-    print(numOrders)
     ordersMade = 0
-    while numOrders != ordersMade:
-        ordersMade = deliver(drones,orders,warehouses,prodWeights,ordersMade)
+    while len(orders) > 0:
+        #deliver everything that the drones have been given
+        deliver(drones,orders,warehouses,prodWeights,commands)
+        #give them more orders!
+        drones, orders = initDrones(numDrones, maxLoad, firstWh, orders)
+
         
 
-def deliver(dronesp,ordersp,warehousesp,prodWeightsp,ordersMade):
+def deliver(dronesp,ordersp,warehousesp,prodWeightsp,outfile):
     for dr in dronesp:
-        ordersMade = droneFill(dr,warehousesp,prodWeightsp,ordersMade)
-    return ordersMade
+        if dr.hasOrder:
+            droneFill(dr,warehousesp,prodWeightsp,outfile)
 
-def droneFill(dronep,whsp,weightsp,oms):
+
+def droneFill(dronep,whsp,weightsp,outfile):
     #create a list of closest warehouses to the order
     distances = ([],[])
     for wh in whsp:
         distances[0].append(shortestDistance(wh.warehouseCoord,dronep.orderAllocated.orderCoord))
         distances[1].append(wh.warehouseID)
-    print(distances[0])
-    print(distances[1])
+    #cheeky insertion sort
     for i in range(1,len(distances[0])):
         j = i
         while j > 0 and distances[0][j] < distances[0][j-1]:
             distances[0][j], distances[0][j-1] = distances[0][j-1], distances[0][j]
             distances[1][j], distances[1][j-1] = distances[1][j-1], distances[1][j]
             j -= 1
-    #sort that list
-    print("ayy")
     #start filling
-
+    totalLoad = 0
+    for item in dronep.orderAllocated.orderProds:
+        for wh in distances[1]:
+            itm = whsp[wh].warehouseQty[item]
+            itemWeight = weightsp[item]
+            if itm > 0 and totalLoad < dronep.maxLoad:
+                print(dronep.loadDrone(itm,wh), file=outfile)
+                totalLoad += itemWeight
+                whsp[wh].warehouseQty[item] = whsp[wh].warehouseQty[item] - 1
     #start delivering
+    for item in dronep.droneLoad:
+        print(dronep.deliver(item), file=outfile)
+        #dronep.droneLoad.remove(item)
     #add one to the orders made
-    return oms
 
 def hasItems(orderp,whp):
     for item in orderp.showItems():
